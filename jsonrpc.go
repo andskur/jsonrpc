@@ -181,9 +181,16 @@ func NewRequest(method string, params ...interface{}) *RPCRequest {
 // JSONRPC: must always be set to "2.0" for JSON-RPC version 2.0
 //
 // See: http://www.jsonrpc.org/specification#response_object
+type rawMessage string
+
+func (m *rawMessage) UnmarshalJSON(data []byte) error {
+	*m = rawMessage(string(data))
+	return nil
+}
+
 type RPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	Result  json.RawMessage `json:"result,omitempty"`
+	Result  rawMessage `json:"result,omitempty"`
 	Error   *RPCError       `json:"error,omitempty"`
 	ID      int             `json:"id"`
 }
@@ -547,7 +554,7 @@ func Params(params ...interface{}) interface{} {
 // If result was not an integer an error is returned.
 func (RPCResponse *RPCResponse) GetInt() (int64, error) {
 	var res int64
-	err := json.Unmarshal(RPCResponse.Result, &res)
+	err := json.Unmarshal([]byte(RPCResponse.Result), &res)
 	if err != nil {
 		return 0, err
 	}
@@ -560,7 +567,7 @@ func (RPCResponse *RPCResponse) GetInt() (int64, error) {
 // If result was not an float64 an error is returned.
 func (RPCResponse *RPCResponse) GetFloat() (float64, error) {
 	var res float64
-	err := json.Unmarshal(RPCResponse.Result, &res)
+	err := json.Unmarshal([]byte(RPCResponse.Result), &res)
 	if err != nil {
 		return 0, err
 	}
@@ -573,7 +580,7 @@ func (RPCResponse *RPCResponse) GetFloat() (float64, error) {
 // If result was not a bool an error is returned.
 func (RPCResponse *RPCResponse) GetBool() (bool, error) {
 	var res bool
-	err := json.Unmarshal(RPCResponse.Result, &res)
+	err := json.Unmarshal([]byte(RPCResponse.Result), &res)
 	if err != nil {
 		return false, err
 	}
@@ -586,7 +593,7 @@ func (RPCResponse *RPCResponse) GetBool() (bool, error) {
 // If result was not a string an error is returned.
 func (RPCResponse *RPCResponse) GetString() (string, error) {
 	var res string
-	err := json.Unmarshal(RPCResponse.Result, &res)
+	err := json.Unmarshal([]byte(RPCResponse.Result), &res)
 	if err != nil {
 		return "", err
 	}
@@ -598,7 +605,7 @@ func (RPCResponse *RPCResponse) GetString() (string, error) {
 //
 // The function works as you would expect it from json.Unmarshal()
 func (RPCResponse *RPCResponse) GetObject(toType interface{}) error {
-	err := json.Unmarshal(RPCResponse.Result, toType)
+	err := json.Unmarshal([]byte(RPCResponse.Result), toType)
 	if err != nil {
 		return err
 	}
