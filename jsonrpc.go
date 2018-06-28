@@ -182,10 +182,10 @@ func NewRequest(method string, params ...interface{}) *RPCRequest {
 //
 // See: http://www.jsonrpc.org/specification#response_object
 type RPCResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   *RPCError   `json:"error,omitempty"`
-	ID      int         `json:"id"`
+	JSONRPC string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *RPCError       `json:"error,omitempty"`
+	ID      int             `json:"id"`
 }
 
 // RPCError represents a JSON-RPC error object if an RPC error occurred.
@@ -402,7 +402,6 @@ func (client *rpcClient) doCall(RPCRequest *RPCRequest) (*RPCResponse, error) {
 
 	var rpcResponse *RPCResponse
 	decoder := json.NewDecoder(httpResponse.Body)
-	decoder.DisallowUnknownFields()
 	decoder.UseNumber()
 	err = decoder.Decode(&rpcResponse)
 
@@ -446,7 +445,6 @@ func (client *rpcClient) doBatchCall(rpcRequest []*RPCRequest) ([]*RPCResponse, 
 
 	var rpcResponse RPCResponses
 	decoder := json.NewDecoder(httpResponse.Body)
-	decoder.DisallowUnknownFields()
 	decoder.UseNumber()
 	err = decoder.Decode(&rpcResponse)
 
@@ -548,70 +546,59 @@ func Params(params ...interface{}) interface{} {
 //
 // If result was not an integer an error is returned.
 func (RPCResponse *RPCResponse) GetInt() (int64, error) {
-	val, ok := RPCResponse.Result.(json.Number)
-	if !ok {
-		return 0, fmt.Errorf("could not parse int64 from %s", RPCResponse.Result)
-	}
-
-	i, err := val.Int64()
+	var res int64
+	err := json.Unmarshal(RPCResponse.Result, &res)
 	if err != nil {
 		return 0, err
 	}
 
-	return i, nil
+	return res, nil
 }
 
 // GetFloat converts the rpc response to float64 and returns it.
 //
 // If result was not an float64 an error is returned.
 func (RPCResponse *RPCResponse) GetFloat() (float64, error) {
-	val, ok := RPCResponse.Result.(json.Number)
-	if !ok {
-		return 0, fmt.Errorf("could not parse float64 from %s", RPCResponse.Result)
-	}
-
-	f, err := val.Float64()
+	var res float64
+	err := json.Unmarshal(RPCResponse.Result, &res)
 	if err != nil {
 		return 0, err
 	}
 
-	return f, nil
+	return res, nil
 }
 
 // GetBool converts the rpc response to a bool and returns it.
 //
 // If result was not a bool an error is returned.
 func (RPCResponse *RPCResponse) GetBool() (bool, error) {
-	val, ok := RPCResponse.Result.(bool)
-	if !ok {
-		return false, fmt.Errorf("could not parse bool from %s", RPCResponse.Result)
+	var res bool
+	err := json.Unmarshal(RPCResponse.Result, &res)
+	if err != nil {
+		return false, err
 	}
 
-	return val, nil
+	return res, nil
 }
 
 // GetString converts the rpc response to a string and returns it.
 //
 // If result was not a string an error is returned.
 func (RPCResponse *RPCResponse) GetString() (string, error) {
-	val, ok := RPCResponse.Result.(string)
-	if !ok {
-		return "", fmt.Errorf("could not parse string from %s", RPCResponse.Result)
+	var res string
+	err := json.Unmarshal(RPCResponse.Result, &res)
+	if err != nil {
+		return "", err
 	}
 
-	return val, nil
+	return res, nil
 }
 
 // GetObject converts the rpc response to an arbitrary type.
 //
 // The function works as you would expect it from json.Unmarshal()
 func (RPCResponse *RPCResponse) GetObject(toType interface{}) error {
-	js, err := json.Marshal(RPCResponse.Result)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(js, toType)
+	err := json.Unmarshal(RPCResponse.Result, toType)
 	if err != nil {
 		return err
 	}
